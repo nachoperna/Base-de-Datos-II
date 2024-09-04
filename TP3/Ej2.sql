@@ -56,7 +56,7 @@
 	    begin
 	        if (exists(SELECT COUNT(*) FROM voluntario v
 	                            JOIN historico h USING (nro_voluntario)
-	                            WHERE v.id_institucion != h.id_institucion AND extract(year from age(current_date, h.fecha_inicio)) >= 3
+	                            WHERE v.id_institucion != h.id_institucion AND extract(year from age(current_date, h.fecha_inicio)) >= 1
 	                            GROUP BY v.nro_voluntario HAVING COUNT(*) >= 3)) then
 	            raise exception 'El voluntario no puede cambiar de institucion mas de 3 veces por año';
 	        end if;
