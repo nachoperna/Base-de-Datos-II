@@ -52,17 +52,23 @@
 
 -- d.
 	create function fn_cambioInstitucion()
-	returns trigger as $$
-	    begin
-	        if (exists(SELECT COUNT(*) FROM voluntario v
-	                            JOIN historico h USING (nro_voluntario)
-	                            WHERE v.id_institucion != h.id_institucion AND extract(year from age(current_date, h.fecha_inicio)) >= 3
-	                            GROUP BY v.nro_voluntario HAVING COUNT(*) >= 3)) then
-	            raise exception 'El voluntario no puede cambiar de institucion mas de 3 veces por año';
-	        end if;
-	    end $$ language 'plpgsql';
+	 returns trigger as $$
+	begin
+	    if (
+	        SELECT COUNT(*)
+	        FROM voluntario v
+	                 JOIN historico h ON (v.nro_voluntario = h.nro_voluntario)
+	        WHERE (NEW.nro_voluntario = v.nro_voluntario)
+	          AND (new.id_institucion != h.id_institucion)
+	          AND EXTRACT(YEAR FROM h.fecha_inicio) = EXTRACT(YEAR FROM NEW.fecha_inicio)
+	    ) >= 3 then 
+	        raise exception 'El voluntario no puede cambiar de institucion mas de 3 veces por año';
+	    end if;
+	    return new;
+	end
+	$$ language 'plpgsql';
 
 	create trigger tr_cambioInstitucion
-	    before insert or update of id_institucion
-	    on voluntario
-	    for each statement execute function fn_cambioInstitucion();
+	    before insert or update of fecha_inicio
+	    on historico
+	    for each row execute function fn_cambioInstitucion();
