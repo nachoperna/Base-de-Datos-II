@@ -57,5 +57,3 @@ select * from his_empleado where id_empleado = 35082;
 delete from empleado where id_empleado = 35082;
 delete from his_empleado;
 
-
-	
