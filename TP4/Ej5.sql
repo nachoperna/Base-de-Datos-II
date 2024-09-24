@@ -8,4 +8,5 @@
 	-- CASCADE: la actualizacion debe cumplir que el empleado tenga un sueldo mayor a 2000 y que pertenezca al distribuidor 20.
 
 -- VISTA empleado_dist_20_70
-	-- LOCAL: 
+	-- LOCAL: la actualizacion debe cumplir que el empleado haya nacido en la decada del 70, y como la vista subyacente empleado_dist_20 tiene un CHECK OPTION entonces tambien debe cumplir que su id_distribuidor sea 20.
+	-- CASCADE: "
