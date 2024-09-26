@@ -108,3 +108,44 @@ as (select i.id_institucion, i.nombre_institucion, count(v.*) as "Cantidad de vo
     join voluntario v using(id_institucion)
     group by i.id_institucion, i.nombre_institucion);
 
+    -- Vista no actualizable automaticamente
+    -- Trigger INSERT o UPDATE
+    create or replace trigger tr_act_vista3
+        instead of insert or update on vista3
+        for each row execute function fn_act_vista3();
+
+    create or replace function fn_act_vista3()
+    returns trigger as $$
+        begin
+            if (exists(select 1 from institucion where id_institucion = new.id_institucion)) then
+                if (exists(select 1 from voluntario where nro_voluntario = new.nro_voluntario)) then
+                    if (tg_op = 'INSERT') then
+                        insert into vista3 values (new.id_institucion, new.nombre_institucion, default);
+                    end if;
+                    elsif (tg_op = 'UPDATE') then
+                        -- sentencia update
+                else
+                    raise exception 'No existe un voluntario con ese id';
+                end if;
+            else 
+                raise exception 'No existe institucion con esa id';
+            end if;
+            return new;
+        end;
+        $$ language 'plpgsql';
+
+    -- Trigger DELETE
+        create or replace trigger tr_del_vista3
+            instead of delete on vista3
+            for each row execute function fn_del_vista3();
+
+        create or replace function fn_del_vista3()
+        returns trigger as $$
+            begin
+                if (exists(select 1 from vista3 where id_institucion = old.id_institucion)) then
+                    delete from vista3 where id_institucion = old.id_institucion;
+                end if;
+                return old;
+            end;
+            $$ language 'plpgsql';
+
