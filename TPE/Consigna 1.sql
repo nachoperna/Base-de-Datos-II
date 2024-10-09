@@ -1,38 +1,10 @@
 -- a. Las personas que no están activas deben tener establecida una fecha de baja, la cual se debe controlar que sea al menos 6 meses posterior a la de su alta.
     -- Chequeo por la positiva.
     alter table persona add constraint check_fecha_baja
-    check (activo = True or fecha_baja is null or (
-        extract(year from age(fecha_alta, fecha_baja) >= 1 or extract(month from age(fecha_alta, fecha_baja)) >= 6)));
+    check ((activo = true and fecha_baja is null) or (fecha_baja is not null and extract(month from age(fecha_alta, fecha_baja)) >= 6));
         -- Chequea que todas las personas esten activas o que no tenga cargada fecha de baja o que si esta cargada, que la diferencia con su fecha de alta sea menor a 6 meses
 
-    -- Chequeo por la negativa.
-    alter table persona add constraint check_fecha_baja
-    check (not((activo = false and fecha_baja is not null) and (extract(year from age(fecha_alta, fecha_baja)) < 1 and extract(month from age(fecha_alta, fecha_baja)) < 6)));
-        -- Chequea que no exista ninguna persona que no este activa, que tenga una fecha de baja cargada y que esta tenga una diferencia mayor a 6 meses con su fecha de alta.
-
-    -- NO FUNCIONA con restriccion declarativa (deja cambiar estado activo a false y que la fechabaja siga siendo null)
-
-    create or replace trigger tr_check_baja
-        before update of activo on persona
-        for each row execute function fn_check_baja();
-
-    create or replace function fn_check_baja()
-    returns trigger as $$
-        begin
-            if (new.activo = false) then -- comprueba que quiera dar de baja al cliente
-                if (exists(select 1 from persona where id_persona = new.id_persona
-                                                 and fecha_baja is not null
-                                                 and extract(month from age(fecha_alta, fecha_baja)) > 6)) then
-                    update persona set activo = new.activo where id_persona = new.id_persona;
-                else
-                    raise exception 'No existe la persona o su fecha de baja no es 6 meses posterior a su alta en el sistema';
-                end if;
-            end if;
-            return new;
-        end;
-        $$ language 'plpgsql';
-
-    -- FUNCIONA 
+    -- FUNCIONA
 
 -- b. El importe de un comprobante debe coincidir con el total de los importes indicados en las líneas que lo conforman (si las tuviera).
     
