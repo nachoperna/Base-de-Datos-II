@@ -20,27 +20,30 @@
 (personal) junto con la cantidad de clientes distintos que cada uno ha atendido en tal periodo y
 los tiempos promedio y máximo del conjunto de turnos atendidos en el periodo.*/
 
-   create or replace function generarInformePersonal(inicio_periodo timestamp, fin_periodo timestamp)
+   create or replace function generarInformePersonal(inicio_periodo timestamptz, fin_periodo timestamptz)
       returns table (
          id_personal int,
          nombre_personal varchar(40),
-         cantidad_clientes_atendidos int,
-         desde timestamp,
-         hasta timestamp,
-         tiempo_promedio_turno timestamp,
-         tiempo_maximo_turno timestamp
+         cantidad_clientes_atendidos bigint,
+         desde timestamptz,
+         hasta timestamptz,
+         tiempo_promedio_turno interval,
+         tiempo_maximo_turno interval
       )
       as $$
       begin
          return query
-         (select p.id_personal, p1.nombre, count(distinct c.id_cliente), inicio_periodo, fin_periodo, avg(t.desde - t.hasta), max(t.desde - t.hasta)
+         (select p.id_personal, p1.nombre, count(distinct c.id_cliente), inicio_periodo, fin_periodo, avg(t.hasta - t.desde), max(t.hasta - t.desde)
           from personal p
               join persona p1 on p.id_personal = p1.id_persona
               join turno t on t.id_personal = p.id_personal
               join lugar l on l.id_lugar = t.id_lugar
               join comprobante c on l.id_lugar = c.id_lugar
           where t.desde >= inicio_periodo and t.hasta <= fin_periodo
-          group by t.id_personal
+          group by p.id_personal, p1.nombre
          );
       end;
       $$ language 'plpgsql';
+
+      select * from generarInformePersonal(to_timestamp('2024-10-09 00:00:00', 'yyyy-mm-dd HH24:MI:SS'), now());
+      
