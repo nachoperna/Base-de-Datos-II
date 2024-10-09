@@ -63,7 +63,7 @@
 
     -- Justificacion de ambas implementaciones: se debe comprobar que no exista ningun caso que no cumpla la condicion de la consigna, donde ningun IMPORTE TOTAL de Comprobante debe ser distinto de la suma de los importes de todas las lineas que lo componen.
 
-    -- Triggers para la correcta insercion de una linea en un comprobante.
+    -- Triggers para la correcta insercion de una linea en un comprobante.(NO NECESARIA)
     create or replace trigger tr_ins_linea
         before insert or update on lineacomprobante
         for each row execute function fn_actLineaComprobante();
