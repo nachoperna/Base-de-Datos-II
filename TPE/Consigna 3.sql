@@ -15,7 +15,7 @@
 
 	-- Esta vista SI seria automaticamente actualizable en PostgreSQL (creeria porque me da paja insertar valores en todas las tablas para comprobarlo):
 	create or replace view Vista1
-	as (select saldo from cliente
+	as (select saldo, id_cliente from cliente
 	    where saldo is not null and id_cliente in
 	    (select id_persona from persona
 	    where extract(year from age(current_timestamp, fecha_nacimiento)) < 30 and id_persona in
@@ -33,6 +33,8 @@
 			- no contiene operaciones de conjunto
 			- la seleccion de columnas no tiene funciones de agregacion
 		*/
+
+		-- FUNCIONA VISTA1
 
 /* b. Vista2, con los datos de los clientes activos del sistema que hayan sido dados de alta en el
 año actual y que poseen al menos un servicio activo, incluyendo el/los servicio/s activo/s que
