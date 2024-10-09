@@ -64,14 +64,24 @@ cada uno posee y su costo. */
 		        if (tg_op = 'INSERT') then
 		            insert into vista2 values (new.id_persona, new.tipo, new.tipodoc, new.nrodoc, new.nombre, new.apellido, new.fecha_nacimiento, new.fecha_alta, new.fecha_baja, new.cuit, new.activo, new.mail, new.telef_area, new.telef_numero, new.nombre, new.id_servicio, new."Costo servicio");
 		        else -- sentencia update
-		            update vista2 set tipo = new.tipo,
-		                              fecha_baja = new.fecha_baja,
-		                              activo = new.activo,
-		                              mail = new.mail,
-		                              telef_area = new.telef_area,
-		                              telef_numero = new.telef_numero,
-		                              "Costo servicio" = new."Costo servicio"
-		            where id_persona = new.id_persona and id_servicio = new.id_servicio;
+		            if old."Costo servicio" is distinct from new."Costo servicio" then
+                        update vista2 set "Costo servicio" = new."Costo servicio" where id_persona = new.id_persona and id_servicio = new.id_servicio;
+                    end if;
+                    if (old.fecha_baja is distinct from new.fecha_baja) then
+		                update vista2 set fecha_baja = new.fecha_baja where id_persona = new.id_persona and id_servicio = new.id_servicio;
+		            end if;
+		            if (old.telef_numero is distinct from new.telef_numero) then
+		                update vista2 set telef_numero = new.telef_numero where id_persona = new.id_persona and id_servicio = new.id_servicio;
+		            end if;
+		            if (old.telef_area is distinct from new.telef_area) then
+                        update vista2 set telef_area = new.telef_area where id_persona = new.id_persona and id_servicio = new.id_servicio;
+                    end if;
+		            if (old.activo is distinct from new.activo) then
+                        update vista2 set activo = new.activo where id_persona = new.id_persona and id_servicio = new.id_servicio;
+                    end if;
+		            if (old.mail is distinct from new.mail) then
+                        update vista2 set mail = new.mail where id_persona = new.id_persona and id_servicio = new.id_servicio;
+                    end if;
 		        end if;
 		        return new;
 		    end;
