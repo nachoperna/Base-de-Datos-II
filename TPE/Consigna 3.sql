@@ -109,10 +109,44 @@ cada uno posee y su costo. */
     servicio, año, mes y monto.
 */
 
-	create or replace view Vista3
-	    as (select s.* from servicio s
-	            join lineacomprobante l on s.id_servicio = l.id_servicio
-	            join comprobante c on l.id_comp = c.id_comp and l.id_tcomp = c.id_tcomp
-	        where s.periodico is true and c.fecha >= (current_timestamp - interval '5 years'));
+	create or replace view vista3
+	as (select s.*, c.fecha, sum(c.importe) as "Facturacion mensual" from servicio s -- datos del servicio, fecha de facturacion y suma mensual de facturacion
+	    join lineacomprobante l on s.id_servicio = l.id_servicio
+	    join comprobante c on l.id_comp = c.id_comp and l.id_tcomp = c.id_tcomp
+	    where s.periodico is true and c.fecha >= (now() - (interval '5 years')) -- se controla que el servicio sea periodico y que la fecha de la factura del servicio este dentro de los ultimos 5 años
+	    group by extract(month from c.fecha), s.id_servicio, c.fecha, c.importe -- se agrupa por mes
+	    order by s.id_servicio, extract(year from c.fecha), extract(month from c.fecha), c.importe
+	    );
 
-	    -- todavia nose como dividirlo por meses, quizas de forma recursiva 
+	-- Vista3 no es automaticamente actualizable en PostgreSQL porque:
+	    -- contiene mas de una entrada en la clausula FROM
+	    -- contiene funcion de agrupacion en el top level
+	    -- contiene funcion de agregacion en el top level
+
+	create or replace trigger tr_act_vista3
+	    instead of insert or update on vista3
+	    for each row execute function fn_act_vista3();
+
+	create or replace function fn_act_vista3()
+	returns trigger as $$
+	    begin
+	        if (tg_op = 'INSERT') then
+	            insert into servicio values (new.id_servicio, new.nombre, true, new.costo, new.intervalo, new.tipo_intervalo, new.activo, new.id_cat);
+	        else
+	            if (exists(select 1 from servicio where id_servicio = new.id_servicio and periodico is true)) then
+	                if (old.nombre is distinct from new.nombre) then
+	                    update servicio set nombre = new.nombre where id_servicio = new.id_servicio;
+	                end if;
+	                if (old.costo is distinct from new.costo) then
+	                    update servicio set costo = new.costo where id_servicio = new.id_servicio;
+	                end if;
+	                if (old.activo is distinct from new.activo) then
+	                    update servicio set activo = new.activo where id_servicio = new.id_servicio;
+	                end if;
+	            else
+	                raise exception 'No existe el servicio a actualziiar';
+	            end if;
+	        end if;
+	        return new;
+	    end;
+	    $$ language 'plpgsql';
