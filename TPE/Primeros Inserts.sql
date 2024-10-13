@@ -51,9 +51,9 @@ INSERT INTO Direccion (id_direccion, id_persona, calle, numero, piso, depto, id_
 (3, 3, 'Calle Verdadera', 300, 0, NULL, 3);
 
 INSERT INTO Comprobante (id_comp, id_tcomp, fecha, comentario, estado, fecha_vencimiento, id_turno, importe, id_cliente, id_lugar) VALUES
-(1, 1, NOW(), 'Pago mensual', 'Pagado', NOW() + INTERVAL '365 days', 1, 100.00, 1, 1),
-(2, 2, NOW(), 'Pago de servicio', 'Pendiente', NOW() + INTERVAL '365 days', 2, 200.00, 2, 1),
-(3, 1, NOW(), 'Suscripción', 'Pagado', NOW() + INTERVAL '365 days', 1, 150.00, 3, 1);
+(1, 1, NOW(), 'Pago mensual', 'Pagado', NOW() + INTERVAL '365 days', 1, 0, 1, 1),
+(2, 2, NOW(), 'Pago de servicio', 'Pendiente', NOW() + INTERVAL '365 days', 2, 0, 2, 1),
+(3, 1, NOW(), 'Suscripción', 'Pagado', NOW() + INTERVAL '365 days', 1, 0, 3, 1);
 
 INSERT INTO LineaComprobante (nro_linea, id_comp, id_tcomp, descripcion, cantidad, importe, id_servicio) VALUES
 (1, 1, 1, 'Servicio de Internet', 1, 100.00, 1),
