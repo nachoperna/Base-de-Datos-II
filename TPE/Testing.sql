@@ -15,6 +15,29 @@
         -- Si funcionaa: no debe dejar actualizar.
 
     -- b.
+        insert into lineacomprobante values (1, 1, 1, '', 1, 100, 2);
+        insert into lineacomprobante values (2, 1, 1, '', 1, 200, 2);
+        insert into lineacomprobante values (3, 1, 1, '', 1, 100, 2);
+        -- Insertamos 3 lineas de comprobante al comprobante (1,1)
+        select nro_linea, id_comp, id_tcomp, importe from lineacomprobante where id_comp = 1 and id_tcomp = 1;
+        -- Comprobamos que se encuentren las 3 lineas insertadas
+        select id_comp, id_tcomp, importe from comprobante where id_comp = 1 and id_tcomp = 1;
+        -- Miramos la tupla del comprobante donde insertamos lineas.
+        -- Si funciona: el importe del comprobante debe ser la suma de las lineas (100+200+100 = 400)
+
+        update lineacomprobante set importe = 0 where nro_linea = 3 and id_comp = 1 and id_tcomp = 1;
+        -- Modificamos el importe de una linea del comprobante.
+        select id_comp, id_tcomp, importe from comprobante where id_comp = 1 and id_tcomp = 1;
+        -- Si funciona: el importe del comprobante debe estar modificado por la nueva suma de sus lineas (100+200+0 = 300)
+
+        delete from lineacomprobante where nro_linea = 2 and id_comp = 1 and id_tcomp = 1 and id_servicio = 2;
+        -- Borramos una linea del comprobante.
+        select id_comp, id_tcomp, importe from comprobante where id_comp = 1 and id_tcomp = 1;
+        -- Si funciona: el importe del comprobante debe tener descontado el importe de la linea que eliminamos (300 - 200 = 100)
+
+        delete from lineacomprobante;
+        update comprobante set importe = 0;
+        -- Regresamos la base al estado anterior del testing
 
     -- c.
         select * from equipo;
@@ -26,12 +49,13 @@
 -- 2.
     -- a.
         select * from servicio;
-        -- Tenemos de base 3 servicios, 1 y 2 son periodicos. Todos activos.
+        -- Controlamos que servicios periodicos tenemos.
         select * from equipo;
-        -- Servicio 1 asignado al cliente 1, servicio 2 asignado a cliente 2.
+        -- Controlamos que clientes poseen esos servicios.
         call generarFacturas();
-        -- Se deben generar la factura para el cliente 1 y 2, con monto 100 y 200 respectivamente.
-        select * from comprobante where id_cliente = 1 or id_cliente = 2;
+        -- Se deben generar la factura para los clientes anteriores.
+        select * from comprobante;
+        -- Comprobamos que se encuentren cargados los comprobantes de los clientes anteriores con el monto correspondiente por sus servicios periodicos.
 
     -- b.
         select * from turno;
@@ -79,6 +103,7 @@
         -- Si funciona: el costo del servicio del cliente 1 deberia ser distinto del anterior.
 
     -- c.
+        select * from servicio;
+        -- Comprobar que servicios periodicos tenemos
         select * from vista3;
-        -- todavia no se puede comprobar porque no se pueden insertar lineas de comprobante.
-        select * from lineacomprobante;
+        -- Comprobar que los servicios anteriores aparezcan en la vista con sus montos facturados correctos.
