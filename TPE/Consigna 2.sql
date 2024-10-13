@@ -6,12 +6,9 @@
 create or replace procedure generarFacturas()
 language 'plpgsql' as $$
     declare
-        --idcliente int;
-        --idservicio int;
-        --costo_servicio numeric(18,3);
-        --cantidad_servicio int;
         idtcomp int;
         idcomp int;
+        nrolinea int;
         cliente_servicio record;
     begin
         for cliente_servicio in(
@@ -25,6 +22,9 @@ language 'plpgsql' as $$
             -- Se obtiene un id de tipo de comprobante valido
             select id_tcomp+1 into idtcomp from tipocomprobante order by id_tcomp desc limit 1;
             -- Se genera el tipo de comprobante
+            if (idtcomp is null) then -- significa que no hay tipos de comprobantes cargados en el sistema.
+                idtcomp = 1;
+            end if;
             insert into tipocomprobante values (
                                                 idtcomp,
                                                 'Venta',
@@ -34,6 +34,9 @@ language 'plpgsql' as $$
             -- Se obtiene un nuevo id de comprobante en continuacion con todos los que tiene el cliente
             select id_comp+1 into idcomp from comprobante where id_cliente = cliente_servicio.id_persona order by id_comp desc limit 1;
             -- Se genera el comprobante (importe=0 porque debe actualizarse automaticamente cuando se le agreguen lineas)
+            if (idcomp is null) then -- significa que no hay comprobantes cargados en el sistema.
+                idcomp = 1;
+            end if;
             insert into comprobante values (
                                             idcomp,
                                             idtcomp,
@@ -47,9 +50,13 @@ language 'plpgsql' as $$
                                             1
                                            );
 
+            select nro_linea+1 into nrolinea from lineacomprobante where id_comp = idcomp and id_tcomp = idtcomp order by nro_linea limit 1;
+            if (nrolinea is null) then -- significa que no hay lineas cargadas en nuestro comprobante.
+                nrolinea = 1;
+            end if;
             -- Se generan las lineas del comprobante creado
             insert into lineacomprobante values (
-                                                 (select nro_linea+1 from lineacomprobante order by nro_linea limit 1),
+                                                 nrolinea,
                                                  idcomp,
                                                  idtcomp,
                                                  'Servicio de Internet',
