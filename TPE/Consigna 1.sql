@@ -53,45 +53,46 @@
         for each row execute function fn_actLineaComprobante();
 
     create or replace function fn_actLineaComprobante()
-    returns trigger as $$
-        begin
-            if (exists(select 1 from comprobante where id_comp = new.id_comp and id_tcomp = new.id_tcomp)
-                and exists(select 1 from servicio where id_servicio = new.id_servicio)) then -- idservicio puede ser nulo en lineacomprobante no entiendo por que pero lo chequeo igual
-                if (tg_op = 'INSERT') then
-                    insert into lineacomprobante values (new.nro_linea, new.id_comp, new.id_tcomp, new.descripcion, new.cantidad, new.importe, new.id_servicio);
-                    update comprobante set importe =+ (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp;
-                else -- update
-                    if (exists(select 1 from lineacomprobante where nro_linea = new.nro_linea and id_comp = new.id_comp and id_tcomp = new.id_tcomp and id_servicio = new.id_servicio)) then
-                        -- esta implementacion evita el problema de no saber si el usuario quiere aumentar el importe de una linea
-                        -- o decrementarlo
-                        update comprobante set importe =- (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- le resta el monto de linea anterior
-                        update comprobante set importe =+ (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- le suma el nuevo monto de linea
-                    else
-                        raise exception 'No existe una linea con esos id';
+        returns trigger as $$
+            begin
+                if (exists(select 1 from comprobante where id_comp = new.id_comp and id_tcomp = new.id_tcomp)
+                    and exists(select 1 from servicio where id_servicio = new.id_servicio)) then -- idservicio puede ser nulo en lineacomprobante no entiendo por que pero lo chequeo igual
+                    if (tg_op = 'INSERT') then
+                        update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp;
+                    else -- update
+                        if (exists(select 1 from lineacomprobante where nro_linea = new.nro_linea and id_comp = new.id_comp and id_tcomp = new.id_tcomp and id_servicio = new.id_servicio)) then
+                            -- esta implementacion evita el problema de no saber si el usuario quiere aumentar el importe de una linea
+                            -- o decrementarlo
+                            update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- le resta el monto de linea anterior
+                            update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- le suma el nuevo monto de linea
+                        else
+                            raise exception 'No existe una linea con esos id';
+                        end if;
                     end if;
+                else
+                    raise exception 'No existe un comprobante o servicio con esos id';
                 end if;
-            else
-                raise exception 'No existe un comprobante o servicio con esos id';
-            end if;
-            return new;
-        end;
-        $$ language 'plpgsql';
-
+                return new;
+            end;
+            $$ language 'plpgsql';
+    -- FUNCIONA PARA INSERT Y UPDATE.
+    
     create or replace trigger tr_del_LineaComprobante
         after delete on lineacomprobante
         for each row execute function fn_del_LineaComprobante();
 
     create or replace function fn_del_LineaComprobante()
-    returns trigger as $$
-        begin
-            if (exists(select 1 from lineacomprobante where nro_linea = old.nro_linea and id_comp = old.id_comp and id_tcomp = old.id_tcomp and id_servicio = old.id_servicio)) then
-                delete from lineacomprobante where nro_linea = old.nro_linea and id_comp = old.id_comp and id_tcomp = old.id_tcomp and id_servicio = old.id_servicio;
-                update comprobante set importe =- (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp;
-            end if;
-            return old;
-        end;
-        $$ language 'plpgsql';
-        
+        returns trigger as $$
+            begin
+                if (exists(select 1 from lineacomprobante where nro_linea = old.nro_linea and id_comp = old.id_comp and id_tcomp = old.id_tcomp and id_servicio = old.id_servicio)) then
+                    -- delete from lineacomprobante where nro_linea = old.nro_linea and id_comp = old.id_comp and id_tcomp = old.id_tcomp and id_servicio = old.id_servicio;
+                    update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp;
+                end if;
+                return old;
+            end;
+            $$ language 'plpgsql';
+    -- TODAVIA NO ACTUALIZA IMPORTE DE COMPROBANTE EN DELETE.
+
 -- c. Las IPs asignadas a los equipos no pueden ser compartidas entre diferentes clientes.
     
     -- Restriccion declarativa en SQL estándar:
