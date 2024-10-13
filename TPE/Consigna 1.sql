@@ -1,8 +1,14 @@
 -- a. Las personas que no están activas deben tener establecida una fecha de baja, la cual se debe controlar que sea al menos 6 meses posterior a la de su alta.
     -- Chequeo por la positiva.
     alter table persona add constraint check_fecha_baja
-    check ((activo = true and fecha_baja is null) or (fecha_baja is not null and extract(month from age(fecha_alta, fecha_baja)) >= 6));
-        -- Chequea que todas las personas esten activas o que no tenga cargada fecha de baja o que si esta cargada, que la diferencia con su fecha de alta sea menor a 6 meses
+    check ((activo = true and fecha_baja is null)
+               or
+           (fecha_baja is not null
+                and
+            ((extract(year from age(fecha_baja, fecha_alta)) >= 1)
+                 or
+             (extract(month from age(fecha_baja, fecha_alta)) >= 6))));
+        -- Chequea que todas las personas esten activas o que no tenga cargada fecha de baja o que si esta cargada, que la diferencia con su fecha de alta sea mayor a 6 meses.
 
     -- FUNCIONA
 
