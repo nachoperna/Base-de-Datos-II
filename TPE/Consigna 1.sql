@@ -10,9 +10,15 @@
     
     -- Restriccion declarativa en SQL estándar:
     create assertion ass_importeComprobante
-        check (not exists(select 1 from lineacomprobante l join comprobante c using(id_comp, id_tcomp)
-                        where l.id_comp = old.id_comp and l.id_tcomp = old.id_tcomp
-                        group by c.importe having c.importe != sum(l.importe)));
+    check (
+        not exists (
+            select 1
+            from comprobante c
+            JOIN lineacomprobante l
+            on c.id_comp = l.id_comp and c.id_tcomp = l.id_tcomp
+            group by c.id_comp, c.id_tcomp, c.importe having c.importe != sum(l.importe)
+        )
+    );
 
     -- Implementacion en PostgreSQL:    
     create or replace trigger tr_importeComprobante
@@ -84,7 +90,9 @@
     
     -- Restriccion declarativa en SQL estándar:
     create assertion ass_ipClientes
-        check(not exists(select 1 from equipo where id_cliente is not null and id_cliente != new.id_cliente and ip = new.ip));
+        check(not exists(select 1 from equipo e1
+                         join equipo e2 on e1.ip = e2.ip
+                         where e1.id_cliente is not null and e1.id_cliente != e2.id_cliente));
 
     -- Implementacion en PostgreSQL:
     create or replace trigger tr_ipClientes
