@@ -7,6 +7,12 @@
         update persona set activo = false where id_persona = 3;
         -- Queremos dejar inactivo a un cliente sin establecer una fecha de baja
         -- Si funciona: no nos permite realizar la operacion porque viola la restriccion "check_fecha_baja".
+        update persona set fecha_baja = to_timestamp('2025-11-09', 'yyyy-mm-dd H24:MI:SS') where id_persona = 3;
+        -- Establecemos una fecha de baja con diferencia de 1 año y 1 mes.
+        -- Si funciona: debe dejar actualizar.
+        update persona set fecha_baja = to_timestamp('2024-11-09', 'yyyy-mm-dd H24:MI:SS') where id_persona = 3;
+        -- Establecemos una fecha de baja con diferencia de 1 mes.
+        -- Si funcionaa: no debe dejar actualizar.
 
     -- b.
 
