@@ -22,7 +22,7 @@
             from comprobante c
             JOIN lineacomprobante l
             on c.id_comp = l.id_comp and c.id_tcomp = l.id_tcomp
-            group by c.id_comp, c.id_tcomp, c.importe having c.importe != sum(l.importe)
+            group by c.id_comp, c.id_tcomp, c.importe having c.importe != sum(l.importe * l.cantidad)
         )
     );
 
@@ -36,7 +36,7 @@
         begin
             if (exists(select 1 from lineacomprobante l join comprobante c using(id_comp, id_tcomp)
                         where l.id_comp = old.id_comp and l.id_tcomp = old.id_tcomp
-                        group by c.importe having c.importe != sum(l.importe))) then
+                        group by c.importe having c.importe != sum(l.importe * l.cantidad))) then
                 raise exception 'No puede insertarse la linea porque no coincide el IMPORTE TOTAL con la suma de todas las lineas de los comprobantes';
             else
                 raise notice 'Linea insertada correctamente';
@@ -47,7 +47,7 @@
 
     -- Justificacion de ambas implementaciones: se debe comprobar que no exista ningun caso que no cumpla la condicion de la consigna, donde ningun IMPORTE TOTAL de Comprobante debe ser distinto de la suma de los importes de todas las lineas que lo componen.
 
-    -- Triggers para la correcta insercion de una linea en un comprobante.(NO NECESARIA)
+    -- Triggers para la correcta insercion de una linea en un comprobante.
     create or replace trigger tr_ins_linea
         before insert or update on lineacomprobante
         for each row execute function fn_actLineaComprobante();
@@ -59,10 +59,8 @@
                     and exists(select 1 from servicio where id_servicio = new.id_servicio)) then -- idservicio puede ser nulo en lineacomprobante no entiendo por que pero lo chequeo igual
                     if (tg_op = 'INSERT') then
                         update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp;
-                    else -- update
+                    else -- UPDATE
                         if (exists(select 1 from lineacomprobante where nro_linea = new.nro_linea and id_comp = new.id_comp and id_tcomp = new.id_tcomp and id_servicio = new.id_servicio)) then
-                            -- esta implementacion evita el problema de no saber si el usuario quiere aumentar el importe de una linea
-                            -- o decrementarlo
                             update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- le resta el monto de linea anterior
                             update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- le suma el nuevo monto de linea
                         else
@@ -75,7 +73,7 @@
                 return new;
             end;
             $$ language 'plpgsql';
-    -- FUNCIONA PARA INSERT Y UPDATE.
+    -- FUNCIONA.
     
     create or replace trigger tr_del_LineaComprobante
         after delete on lineacomprobante
@@ -84,14 +82,11 @@
     create or replace function fn_del_LineaComprobante()
         returns trigger as $$
             begin
-                if (exists(select 1 from lineacomprobante where nro_linea = old.nro_linea and id_comp = old.id_comp and id_tcomp = old.id_tcomp and id_servicio = old.id_servicio)) then
-                    -- delete from lineacomprobante where nro_linea = old.nro_linea and id_comp = old.id_comp and id_tcomp = old.id_tcomp and id_servicio = old.id_servicio;
-                    update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp;
-                end if;
+                update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- se le resta el importe de la linea eliminada al comprobante al que pertenece esa linea.
                 return old;
             end;
             $$ language 'plpgsql';
-    -- TODAVIA NO ACTUALIZA IMPORTE DE COMPROBANTE EN DELETE.
+    -- FUNCIONA.
 
 -- c. Las IPs asignadas a los equipos no pueden ser compartidas entre diferentes clientes.
     
@@ -121,5 +116,4 @@
         $$ language 'plpgsql';
 
     -- Justificacion de ambas implementaciones: se debe comprobar que no exista en la tabla Equipo ningun cliente diferente al dueño de la IP que tenga la misma direccion IP que se quiere insertar o modificar.
-
     -- FUNCIONA
