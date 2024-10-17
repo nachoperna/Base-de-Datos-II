@@ -2,19 +2,26 @@
 
 -- 1.
     -- a.
-        select * from persona;
+        select id_persona, activo, fecha_alta, fecha_baja from persona;
         -- Hay un minimo de 3 clientes, todos activos y sin fecha de baja establecida.
         update persona set activo = false where id_persona = 3;
         -- Queremos dejar inactivo a un cliente sin establecer una fecha de baja
         -- Si funciona: no nos permite realizar la operacion porque viola la restriccion "check_fecha_baja".
         update persona set fecha_baja = to_timestamp('2025-11-09', 'yyyy-mm-dd H24:MI:SS') where id_persona = 3;
+        select id_persona, activo, fecha_alta, fecha_baja from persona;
         -- Establecemos una fecha de baja con diferencia de 1 año y 1 mes.
         -- Si funciona: debe dejar actualizar.
         update persona set fecha_baja = to_timestamp('2024-11-09', 'yyyy-mm-dd H24:MI:SS') where id_persona = 3;
         -- Establecemos una fecha de baja con diferencia de 1 mes.
-        -- Si funcionaa: no debe dejar actualizar.
+        -- Si funciona: no debe dejar actualizar.
+        update persona set fecha_baja = null where id_persona = 3;
+        select id_persona, activo, fecha_alta, fecha_baja from persona;
+        -- Dejamos la base en el estado anterior.
 
     -- b.
+        select nro_linea, id_comp, id_tcomp, importe from lineacomprobante where id_comp = 1 and id_tcomp = 1;
+        select id_comp, id_tcomp, importe from comprobante where id_comp = 1 and id_tcomp = 1;
+        -- Vamos a comprobar el ejercicio con id_comp = id_tcomp = 1
         insert into lineacomprobante values (1, 1, 1, '', 1, 100, 2);
         insert into lineacomprobante values (2, 1, 1, '', 1, 200, 2);
         insert into lineacomprobante values (3, 1, 1, '', 1, 100, 2);
@@ -40,7 +47,7 @@
         -- Regresamos la base al estado anterior del testing
 
     -- c.
-        select * from equipo;
+        select id_equipo, id_cliente, ip from equipo;
         -- Comprobamos que clientes tienen un equipo con IP asignada actualmente.
         update equipo set ip = '192.168.1.1' where id_cliente = 2;
         -- Le asignamos la IP del cliente 1 al cliente 2.
@@ -48,17 +55,22 @@
 
 -- 2.
     -- a.
-        select * from servicio;
+        select id_servicio, nombre, periodico, tipo_intervalo, costo from servicio;
         -- Controlamos que servicios periodicos tenemos.
-        select * from equipo;
+        select id_servicio, id_cliente from equipo;
         -- Controlamos que clientes poseen esos servicios.
+        select id_comp, id_tcomp, fecha, comentario, importe, id_cliente from comprobante;
+        -- Comprobamos que no se encuentran facturas generadas periodicamente, las cuales todas tienen el comentario "Factura generada periodicamente".
         call generarFacturas();
         -- Se deben generar la factura para los clientes anteriores.
-        select * from comprobante;
+        select id_comp, id_tcomp, fecha, comentario, importe, id_cliente from comprobante;
         -- Comprobamos que se encuentren cargados los comprobantes de los clientes anteriores con el monto correspondiente por sus servicios periodicos.
+        delete from lineacomprobante;
+        delete from comprobante where comentario ilike 'factura generada periodicamente';
+        -- Borramos los datos recien ingresados para dejar la base en el estado anterior al testing.
 
     -- b.
-        select * from turno;
+        select id_personal, id_turno, desde, hasta from turno;
         -- El personal 1 atendio en 2 turnos (id_turno 1 y 3) y el personal 2 en un solo turno (id_turno 2). Ambos con duracion del turno de 8 horas.
         select * from comprobante;
         -- A fines practicos se insertaron unos comprobantes de prueba.
@@ -76,7 +88,7 @@
         insert into equipo values (5, '','', null, null, 2, 4, now(), null, null, null);
         insert into equipo values (6, '','', null, null, 3, 4, now(), null, null, null);
         insert into equipo values (7, '','', null, null, 4, 4, now(), null, null, null);
-        select * from equipo where id_cliente = 4;
+        select id_cliente, id_equipo, id_servicio, fecha_alta from equipo where id_cliente = 4;
         -- Comprobamos que el cliente 4 tiene 4 servicios, es menor de 30 años y vive en la ciudad de Napoli.
         select * from vista1;
         -- Si funciona: el cliente 4 deberia aparecer en la tabla.
@@ -84,6 +96,11 @@
         -- Actualizamos una columna de la vista para comprobar que es actualizable.
         select * from vista1;
         -- Si funciona: el valor de la columna esta cambiado y la vista es actualizable.
+        delete from equipo where id_cliente = 4;
+        delete from cliente where id_cliente = 4;
+        delete from direccion where id_persona = 4;
+        delete from persona where id_persona = 4;
+        -- Dejamos la base en el estado anterior al testing.
 
     -- b.
         select id_persona from persona where activo is true;
@@ -99,11 +116,18 @@
         -- Si funciona: debe mostrar todos los clientes que aparecieron en la consulta anterior junto con los datos de sus servicios.
         update vista2 set "Costo servicio" = "Costo servicio" - 100 where id_persona = 1;
         -- Actualizo el costo de todos los servicios para el cliente 1
-        select * from vista2;
+        select id_persona, activo, id_servicio, "Costo servicio" from vista2;
         -- Si funciona: el costo del servicio del cliente 1 deberia ser distinto del anterior.
+        update vista2 set "Costo servicio" = "Costo servicio" + 100 where id_persona = 1;
+        -- Dejamos la base en el estado anterior.
 
     -- c.
-        select * from servicio;
+        select id_servicio, periodico, costo from servicio;
         -- Comprobar que servicios periodicos tenemos
+        call generarFacturas();
+        -- Generamos las facturas de algunos servicios para que tengamos algun dato de facturacion
+        select id_comp, id_tcomp, fecha, comentario, importe, id_cliente from comprobante;
         select * from vista3;
         -- Comprobar que los servicios anteriores aparezcan en la vista con sus montos facturados correctos.
+        delete from lineacomprobante;
+        delete from comprobante where comentario ilike 'factura generada periodicamente';
