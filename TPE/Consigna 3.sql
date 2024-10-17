@@ -13,7 +13,7 @@
 
 		-- Esta vista no es automaticamente actualizable porque contiene una clausula GROUP BY en el TOP LEVEL.
 
-	-- Esta vista SI seria automaticamente actualizable en PostgreSQL (creeria porque me da paja insertar valores en todas las tablas para comprobarlo):
+	-- Esta vista SI seria automaticamente actualizable en PostgreSQL:
 	create or replace view Vista1
 	as (select saldo, id_cliente from cliente
 	    where saldo is not null and id_cliente in
@@ -34,6 +34,8 @@
 			- la seleccion de columnas no tiene funciones de agregacion
 		*/
 
+	-- Si la Vista1 tuviera especificada opcion WITH CHECK OPTION, obtendría el mismo resultado que si no lo tuviera porque no se referencia a otra vista dentro de vista1, y al insertar en la misma siempre se comprobaria la condicion de vista1 sin importar si tiene especificada WCO.
+
 		-- FUNCIONA VISTA1
 
 /* b. Vista2, con los datos de los clientes activos del sistema que hayan sido dados de alta en el
@@ -51,6 +53,9 @@ cada uno posee y su costo. */
 		/*
 			Vista2 no es automaticamente actualizable en PostgreSQL porque:
 			- tiene mas de una entrada en lista FROM
+
+			Vista2 no es posible hacerla automaticamente actualizable porque necesita mostrar columnas de más de una tabla, 
+			lo que es imposible sin utilizar anidaciones con JOIN y PostgreSQL no admite mas de una tabla en la clausula FROM para vistas actualizables automaticamente.
 		*/
 
 	-- Implementacion mediante TRIGGER:
@@ -63,7 +68,7 @@ cada uno posee y su costo. */
 		    begin
 		        if (tg_op = 'INSERT') then
 		            insert into vista2 values (new.id_persona, new.tipo, new.tipodoc, new.nrodoc, new.nombre, new.apellido, new.fecha_nacimiento, new.fecha_alta, new.fecha_baja, new.cuit, new.activo, new.mail, new.telef_area, new.telef_numero, new.nombre, new.id_servicio, new."Costo servicio");
-		        else -- sentencia update
+		        else -- sentencia update (al no saber que columna especifica puede querer modificar el usuario debemos comprobar posibles cambios en todas las columnas actualizables)
 		            if old."Costo servicio" is distinct from new."Costo servicio" then
                         update servicio set costo = new."Costo servicio" where id_servicio = (select id_servicio from equipo where id_cliente = new.id_persona);
                     end if;
@@ -82,6 +87,7 @@ cada uno posee y su costo. */
 		            if (old.mail is distinct from new.mail) then
                         update persona set mail = new.mail where id_persona = new.id_persona;
                     end if;
+                    -- quitamos de la posibilidad de actualizacion del usuario a las columnas id_persona e id_servicio ya que son unicos y no deben poder cambiarse por PK.
 		        end if;
 		        return new;
 		    end;
@@ -144,7 +150,7 @@ cada uno posee y su costo. */
 	                    update servicio set activo = new.activo where id_servicio = new.id_servicio;
 	                end if;
 	            else
-	                raise exception 'No existe el servicio a actualziiar';
+	                raise exception 'No existe el servicio a actualizar';
 	            end if;
 	        end if;
 	        return new;
