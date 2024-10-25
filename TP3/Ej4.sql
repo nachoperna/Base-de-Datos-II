@@ -57,3 +57,65 @@
     delete from reg_afectados;
 
     insert into reg_afectados values (0);
+
+-- SOLUCION CORRECTA EN SU TOTALIDAD
+
+create table his_entrega(
+    nro_registro int default 0 not null,
+    fecha timestamp,
+    operacion varchar(15),
+    cant_reg_afectados int default 0,
+    usuario varchar(30)
+);
+
+create table reg_afectados(
+    tabla varchar(30),
+    cantidad int
+);
+    insert into reg_afectados values ('entrega', 0);
+    insert into reg_afectados values ('renglon_entrega', 0);
+
+select * from reg_afectados;
+
+create or replace trigger tr_act_entrega
+    after insert or update or delete on entrega
+    for each row execute function fn_actHistorialEntrega();
+
+create or replace trigger tr_act_entrega
+    after insert or update or delete on renglon_entrega
+    for each row execute function fn_actHistorialEntrega();
+
+create or replace function fn_actHistorialEntrega()
+returns trigger as $$
+    declare
+        nroregistro int;
+    begin
+        update reg_afectados set cantidad = cantidad+1 where tabla = tg_table_name;
+
+        if ((select count(*) from his_entrega) = 0) then
+            nroregistro = 0;
+        else
+            nroregistro = (select nro_registro+1 from his_entrega order by nro_registro desc limit 1);
+        end if;
+        insert into his_entrega values (nroregistro,
+                                        now(),
+                                        tg_op,
+                                        (select cantidad from reg_afectados where tabla = tg_table_name),
+                                        current_user);
+
+        update reg_afectados set cantidad = 0;
+        return new;
+    end;
+    $$ language 'plpgsql';
+
+select * from his_entrega;
+
+select * from video order by id_video desc;
+select * from distribuidor order by id_distribuidor desc;
+select * from entrega order by nro_entrega desc;
+insert into entrega values (8074, now(), 12000, 1050);
+select codigo_pelicula from pelicula order by codigo_pelicula desc;
+insert into renglon_entrega values (8074, 31802, 1);
+update renglon_entrega set cantidad = 2 where nro_entrega = 8074 and codigo_pelicula = 31802;
+delete from renglon_entrega where nro_entrega = 8074 and codigo_pelicula = 31802;
+delete from entrega where nro_entrega = 8074;
