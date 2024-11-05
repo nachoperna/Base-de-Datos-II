@@ -5,12 +5,9 @@
                or
            (fecha_baja is not null
                 and
-            ((extract(year from age(fecha_baja, fecha_alta)) >= 1)
-                 or
-             (extract(month from age(fecha_baja, fecha_alta)) >= 6))));
-        -- Chequea que todas las personas esten activas o que no tenga cargada fecha de baja o que si esta cargada, que la diferencia con su fecha de alta sea mayor a 6 meses.
-
-    -- FUNCIONA
+            (age(fecha_baja, fecha_alta) >= interval'6 months')));
+    -- Al ser solo un control de atributo, se puede utilizar un check de tupla como recurso mas restrictivo.
+    -- Se requiere controlar que todas las personas esten activas o que no tenga cargada fecha de baja o que si esta cargada, que la diferencia con su fecha de alta sea mayor a 6 meses.
 
 -- b. El importe de un comprobante debe coincidir con el total de los importes indicados en las líneas que lo conforman (si las tuviera).
     
@@ -20,15 +17,21 @@
         not exists (
             select 1
             from comprobante c
-            JOIN lineacomprobante l
+            join lineacomprobante l
             on c.id_comp = l.id_comp and c.id_tcomp = l.id_tcomp
             group by c.id_comp, c.id_tcomp, c.importe having c.importe != sum(l.importe * l.cantidad)
         )
     );
+    -- El recurso declarativo mas restrictivo en SQL estándar en este caso es un Assertion con control de tablas.
+    -- Se requiere controlar que ante una insercion en la linea de un comprobante, o actualizacion de su importe o cantidad, la suma total del importe de todas las lineas que contiene ese comprobante sea igual al importe del comprobante correspondiente.
 
     -- Implementacion en PostgreSQL:    
-    create or replace trigger tr_importeComprobante
-    after insert or update on lineacomprobante
+    create or replace trigger tr_ins_importeComprobante
+    after insert on lineacomprobante
+    for each row execute function fn_importeComprobante();
+
+    create or replace trigger tr_act_importeComprobante
+    after update of importe,cantidad on lineacomprobante
     for each row execute function fn_importeComprobante();
 
     create or replace function fn_importeComprobante()
@@ -55,12 +58,12 @@
     create or replace function fn_actLineaComprobante()
         returns trigger as $$
             begin
-                if (exists(select 1 from comprobante where id_comp = new.id_comp and id_tcomp = new.id_tcomp)
-                    and exists(select 1 from servicio where id_servicio = new.id_servicio)) then -- idservicio puede ser nulo en lineacomprobante no entiendo por que pero lo chequeo igual
+                if (exists(select 1 from comprobante where id_comp = new.id_comp and id_tcomp = new.id_tcomp) -- se controla que exista el comprobante donde se quiere insertar o actualizar la linea.
+                    and exists(select 1 from servicio where id_servicio = new.id_servicio)) then -- se controla que exista el servicio por el que se quiere insertar o actualizar la linea.
                     if (tg_op = 'INSERT') then
-                        update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp;
+                        update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- si se inserta una linea, entonces se actualiza el valor de importe correspondiente del comprobante sumandole el importe total de esa linea (importe*cantidad)
                     else -- UPDATE
-                        if (exists(select 1 from lineacomprobante where nro_linea = new.nro_linea and id_comp = new.id_comp and id_tcomp = new.id_tcomp and id_servicio = new.id_servicio)) then
+                        if (exists(select 1 from lineacomprobante where nro_linea = new.nro_linea and id_comp = new.id_comp and id_tcomp = new.id_tcomp and id_servicio = new.id_servicio)) then -- si se quiere actualizar una linea, se controla que esta misma exista en el sistema.
                             update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- le resta el monto de linea anterior
                             update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- le suma el nuevo monto de linea
                         else
@@ -70,9 +73,10 @@
                 else
                     raise exception 'No existe un comprobante o servicio con esos id';
                 end if;
-                return new;
+                return new; -- retorna new al ser un trigger before.
             end;
             $$ language 'plpgsql';
+    
     -- FUNCIONA.
     
     create or replace trigger tr_del_LineaComprobante
@@ -83,9 +87,10 @@
         returns trigger as $$
             begin
                 update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- se le resta el importe de la linea eliminada al comprobante al que pertenece esa linea.
-                return old;
+                return old; -- retorna old al ser un trigger after.
             end;
             $$ language 'plpgsql';
+    
     -- FUNCIONA.
 
 -- c. Las IPs asignadas a los equipos no pueden ser compartidas entre diferentes clientes.
