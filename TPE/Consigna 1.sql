@@ -96,15 +96,22 @@
 -- c. Las IPs asignadas a los equipos no pueden ser compartidas entre diferentes clientes.
     
     -- Restriccion declarativa en SQL estándar:
-    create assertion ass_ipClientes
-        check(not exists(select 1 from equipo e1
-                         join equipo e2 on e1.ip = e2.ip
-                         where e1.id_cliente is not null and e1.id_cliente != e2.id_cliente));
+    alter table equipo add constraint chk_mismaIp
+    check (not exists(select 1 from equipo e1
+                             join equipo e2 on e1.ip = e2.ip
+                             where e1.id_cliente is not null and e1.id_cliente != e2.id_cliente));
+        -- Se requiere controlar que no exista en la tabla equipo 2 o mas tuplas con un id_cliente distinto y misma IP.
 
     -- Implementacion en PostgreSQL:
-    create or replace trigger tr_ipClientes
-        before insert or update of ip on equipo
+    create or replace trigger tr_ins_ipClientes
+        before insert on equipo
         for each row execute function fn_ipClientes();
+        -- Ante una insercion en EQUIPO se activa el trigger que controla la restriccion anterior.
+
+    create or replace trigger tr_act_ipClientes
+        before update of ip on equipo
+        for each row execute function fn_ipClientes();
+        -- Ante una actualizacion de IP se debe controlar que la nueva IP no sea igual a otra ya existente de un cliente distinto.
 
     create or replace function fn_ipClientes()
     returns trigger as $$
