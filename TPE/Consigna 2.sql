@@ -43,17 +43,15 @@ language 'plpgsql' as $$
                 id_comp,
                 1,
                 'Servicio',
-                consulta2.cant,
+                consulta.cant,
                 consulta.importe,
                 consulta.id_servicio
             from nuevo_comprobante
-            join (select s.costo as importe, e.id_cliente as idcliente, s.id_servicio
+            join (select s.costo as importe, e.id_cliente as idcliente, s.id_servicio, count(*) as cant
                   from equipo e
-                  join servicio s on e.id_servicio = s.id_servicio) as consulta
-                on nuevo_comprobante.id_cliente = consulta.idcliente
-            join (select e.id_servicio as idserv, count(*) as cant, e.id_cliente as idcliente
-                  from equipo e
-                  group by e.id_servicio, e.id_cliente) as consulta2 on nuevo_comprobante.id_cliente = consulta2.idcliente and consulta.id_servicio = consulta2.idserv;
+                  join servicio s on e.id_servicio = s.id_servicio
+                  group by e.id_cliente, s.id_servicio) as consulta
+                on nuevo_comprobante.id_cliente = consulta.idcliente;
     end;
     $$;
    
