@@ -137,12 +137,15 @@
         -- Dejamos la base en el estado anterior.
 
     -- c.
-        select id_servicio, periodico, costo from servicio;
+        select id_servicio, periodico, costo from servicio where periodico is true;
         -- Comprobar que servicios periodicos tenemos
         call generarFacturas();
         -- Generamos las facturas de algunos servicios para que tengamos algun dato de facturacion
         select id_comp, id_tcomp, fecha, comentario, importe, id_cliente from comprobante;
-        select * from vista3;
+        select id_servicio, periodico, costo, activo, "Facturacion mensual" from vista3;
         -- Comprobar que los servicios anteriores aparezcan en la vista con sus montos facturados correctos.
+        -- Restauramos la base al estado anterior al testing.
         delete from lineacomprobante;
         delete from comprobante where comentario ilike 'factura generada periodicamente';
+        alter sequence idcomp restart;
+        alter sequence nrolinea restart;
