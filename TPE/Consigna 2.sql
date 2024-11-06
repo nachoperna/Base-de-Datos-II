@@ -3,73 +3,57 @@
    generar e insertar los registros asociados a la/s factura/s correspondiente/s a los distintos
    clientes. Indicar si se deben proveer parámetros adicionales para su generación y, de ser así, cuales. */
 
+create sequence idComp
+    start with 1
+    increment by 1
+    minvalue 1
+    cycle;
+
+create sequence nrolinea
+    start with 1
+    increment by 1
+    minvalue 1
+    cycle;
+
 create or replace procedure generarFacturas()
 language 'plpgsql' as $$
-    declare -- se declaran variables necesarias para guardar los datos de subconsultas internas de la funcion
-        idtcomp int;
-        idcomp int;
-        nrolinea int;
-        cliente_servicio record; -- variable necesaria para guardar los registros de todos los clientes activos, con servicios activos y periodicos,  y recorrerlos para generar sus facturas.
     begin
-        for cliente_servicio in(
-            select p.id_persona, s.id_servicio, s.costo from persona p
-            join equipo e on e.id_cliente = p.id_persona
-            join servicio s on e.id_servicio = s.id_servicio
-            where p.activo is true and s.activo is true and s.periodico is true
-        ) loop -- se recorre la variable que contiene una fila por cliente activo con servicio activo y periodico
+        with nuevo_comprobante as
+            (insert into comprobante (id_comp, id_tcomp, fecha, comentario, estado, fecha_vencimiento, id_turno, importe, id_cliente, id_lugar)
+                select
+                    (nextval('idComp')),
+                    1,
+                    now(),
+                    'Factura generada periodicamente',
+                    'Pendiente',
+                    now() + interval'1 month',
+                    null,
+                    0,
+                    clientes.cliente,
+                    1
+                from (select distinct p.id_persona as cliente from persona p
+                            join equipo e on e.id_cliente = p.id_persona
+                            join servicio s on e.id_servicio = s.id_servicio
+                            where p.activo is true and s.activo is true and s.periodico is true) as clientes
+                returning id_comp, id_cliente)
 
-        if (cliente_servicio.id_persona is not null and cliente_servicio.id_servicio is not null) then -- comprobamos que no obtengamos datos fallidos. Quedo innecesaria de una implementacion anterior
-            -- Se obtiene un id de tipo de comprobante valido y se guarda en la variable declarada para organizar la funcion.
-            select id_tcomp+1 into idtcomp from tipocomprobante order by id_tcomp desc limit 1;
-            -- Se genera el tipo de comprobante
-            if (idtcomp is null) then -- significa que no hay tipos de comprobantes cargados en el sistema.
-                idtcomp = 1; -- se carga el primer tipo comprobante
-            end if;
-            insert into tipocomprobante values (
-                                                idtcomp,
-                                                'Venta',
-                                                'Factura' -- todos comprobantes de tipo factura
-                                               );
-
-            -- Se obtiene un nuevo id de comprobante en continuacion con todos los que tiene el cliente y se guarda en la variable declarada para organizar la funcion.
-            select id_comp+1 into idcomp from comprobante where id_cliente = cliente_servicio.id_persona order by id_comp desc limit 1;
-            -- Se genera el comprobante (importe=0 porque debe actualizarse automaticamente cuando se le agreguen lineas)
-            if (idcomp is null) then -- significa que no hay comprobantes cargados en el sistema.
-                idcomp = 1; -- se carga el primer comprobante
-            end if;
-            insert into comprobante values (
-                                            idcomp,
-                                            idtcomp,
-                                            now(),
-                                            'Factura generada periodicamente',
-                                            'Pendiente',
-                                            now() + interval '30 days', -- vencimiento en 30 dias (mensual)
-                                            null,
-                                            0,
-                                            cliente_servicio.id_persona,
-                                            1 -- lugar default
-                                           );
-
-            -- Se obtiene un nro_linea valido y se guarda en la variable declarada para organizar la funcion.
-            select nro_linea+1 into nrolinea from lineacomprobante where id_comp = idcomp and id_tcomp = idtcomp order by nro_linea limit 1;
-            if (nrolinea is null) then -- significa que no hay lineas cargadas en nuestro comprobante.
-                nrolinea = 1; -- se carga la primera linea
-            end if;
-            -- Se generan las lineas del comprobante creado
-            insert into lineacomprobante values (
-                                                 nrolinea,
-                                                 idcomp,
-                                                 idtcomp,
-                                                 'Servicio de Internet',
-                                                 1,
-                                                 cliente_servicio.costo,
-                                                 cliente_servicio.id_servicio
-                                                );
-            -- Se actualiza automaticamente el valor del importe del comprobante creado correspondiente.
-        else
-            raise exception 'Error en la carga de facturas de servicios periodicos';
-        end if;
-        end loop; -- se terminan de generar las facturas
+            insert into lineacomprobante (nro_linea, id_comp, id_tcomp, descripcion, cantidad, importe, id_servicio)
+            SELECT
+                nextval('nrolinea'),
+                id_comp,
+                1,
+                'Servicio',
+                consulta2.cant,
+                consulta.importe,
+                consulta.id_servicio
+            from nuevo_comprobante
+            join (select s.costo as importe, e.id_cliente as idcliente, s.id_servicio
+                  from equipo e
+                  join servicio s on e.id_servicio = s.id_servicio) as consulta
+                on nuevo_comprobante.id_cliente = consulta.idcliente
+            join (select e.id_servicio as idserv, count(*) as cant, e.id_cliente as idcliente
+                  from equipo e
+                  group by e.id_servicio, e.id_cliente) as consulta2 on nuevo_comprobante.id_cliente = consulta2.idcliente and consulta.id_servicio = consulta2.idserv;
     end;
     $$;
    
