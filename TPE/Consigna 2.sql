@@ -3,6 +3,7 @@
    generar e insertar los registros asociados a la/s factura/s correspondiente/s a los distintos
    clientes. Indicar si se deben proveer parámetros adicionales para su generación y, de ser así, cuales. */
 
+-- Utilizamos funciones de secuencia para generar los id_comp de Comprobante y nro_linea de LineaComprobante
 create sequence idComp
     start with 1
     increment by 1
@@ -15,43 +16,44 @@ create sequence nrolinea
     minvalue 1
     cycle;
 
-create or replace procedure generarFacturas()
+create or replace procedure generarFacturas() -- procedimiento a llamar para generar las facturas cuando la empresa lo requiera
 language 'plpgsql' as $$
     begin
-        with nuevo_comprobante as
+        with nuevo_comprobante as -- variable a usar para poder utilizar los datos del comprobante actual insertado en las lineas que se insertaran del mismo
             (insert into comprobante (id_comp, id_tcomp, fecha, comentario, estado, fecha_vencimiento, id_turno, importe, id_cliente, id_lugar)
                 select
-                    (nextval('idComp')),
-                    1,
+                    (nextval('idComp')), -- proximo valor de secuencia
+                    1, -- id_tcomp asociado a los comprobantes de tipo "Factura"
                     now(),
                     'Factura generada periodicamente',
                     'Pendiente',
-                    now() + interval'1 month',
-                    null,
-                    0,
+                    now() + interval'1 month', -- vencimiento dentro de un mes al ser una factura periodica
+                    null, -- turno nulo
+                    0, -- importe 0, se actualizara automaticamente luego al insertar sus lineas gracias a las funciones implementadas en la consigna 1b
                     clientes.cliente,
-                    1
-                from (select distinct p.id_persona as cliente from persona p
+                    1 -- lugar = 1 por default.
+                from (select distinct p.id_persona as cliente from persona p -- para obtener el id_cliente al que se esta generando el comprobante lo obtenemos de la siguiente consulta donde obtenemos todos los clientes DISTINTOS que esten activos, tengan un servicio activo y se periodico.
                             join equipo e on e.id_cliente = p.id_persona
                             join servicio s on e.id_servicio = s.id_servicio
-                            where p.activo is true and s.activo is true and s.periodico is true) as clientes
-                returning id_comp, id_cliente)
+                            where p.activo is true and s.activo is true and s.periodico is true) as clientes -- tagueamos la consulta
+                returning id_comp, id_cliente) -- retornamos el id del comprobante y el id del cliente para poder usarlo en la insercion de las lineas de comprobantes asociadas a ese comprobante.
 
-            insert into lineacomprobante (nro_linea, id_comp, id_tcomp, descripcion, cantidad, importe, id_servicio)
+            insert into lineacomprobante (nro_linea, id_comp, id_tcomp, descripcion, cantidad, importe, id_servicio) 
             SELECT
-                nextval('nrolinea'),
-                id_comp,
-                1,
+                nextval('nrolinea'), -- proximo valor de secuencia
+                id_comp, -- idcomp correspondiente al comprobante recien insertado
+                1, -- id_tcomp asociado a los comprobantes de tipo "Factura"
                 'Servicio',
-                consulta.cant,
-                consulta.importe,
-                consulta.id_servicio
-            from nuevo_comprobante
-            join (select s.costo as importe, e.id_cliente as idcliente, s.id_servicio, count(*) as cant
+                consulta.cant, -- cantidad del servicio contratado
+                consulta.importe, -- importe del servicio contratado
+                consulta.id_servicio -- id del servicio contratado
+            from nuevo_comprobante -- utilizamos esta variable como base para obtener el id_comp e insertarlo en la linea
+            join (select s.costo as importe, e.id_cliente as idcliente, s.id_servicio, count(*) as cant 
                   from equipo e
                   join servicio s on e.id_servicio = s.id_servicio
-                  group by e.id_cliente, s.id_servicio) as consulta
-                on nuevo_comprobante.id_cliente = consulta.idcliente;
+                  group by e.id_cliente, s.id_servicio) as consulta -- como no podemos obtener el importe del servicio, su id y la cantidad correspondiente de la consulta anterior que usamos para insertar en Comprobante (al necesitar filtrar SOLO por clientes distintos), tenemos que generar otra consulta donde obtenemos el importe del servicio, su cantidad 
+                on nuevo_comprobante.id_cliente = consulta.idcliente; -- aca comprobamos que solo obtengamos el importe de los servicios y su cantidad correspondiente del cliente al que acabamos de generar su comprobante.
+                -- en esta consulta obtenemos las cantidades correspondientes al agrupar todos los servicios del cliente correspondiente en la tabla EQUIPO y calcularles su cantidad. Ejemplo: si el cliente 1 tiene 2 servicios con la misma ID en la tabla Equipo, entonces en lineacomprobante se inserta una vez ese servicio con cantidad = 2
     end;
     $$;
    
