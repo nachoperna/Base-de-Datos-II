@@ -42,7 +42,6 @@
 año actual y que poseen al menos un servicio activo, incluyendo el/los servicio/s activo/s que
 cada uno posee y su costo. */
 
-	-- Ejemplo de vista no actualizable automaticamente segun estas condiciones:
 	create or replace view Vista2
 	as (select p.*, s.nombre as "Nombre servicio", s.id_servicio, s.costo as "Costo servicio" from cliente c
             join persona p on p.id_persona = c.id_cliente
@@ -67,7 +66,8 @@ cada uno posee y su costo. */
 		returns trigger as $$
 		    begin
 		        if (tg_op = 'INSERT') then
-		            insert into vista2 values (new.id_persona, new.tipo, new.tipodoc, new.nrodoc, new.nombre, new.apellido, new.fecha_nacimiento, new.fecha_alta, new.fecha_baja, new.cuit, new.activo, new.mail, new.telef_area, new.telef_numero, new.nombre, new.id_servicio, new."Costo servicio");
+		            insert into persona values (new.id_persona, new.tipo, new.tipodoc, new.nrodoc, new.nombre, new.apellido, new.fecha_nacimiento, new.fecha_alta, new.fecha_baja, new.cuit, new.activo, new.mail, new.telef_area, new.telef_numero);
+		            insert into servicio values (new.id_servicio, new.nombre, false, new."Costo servicio", null, null, true, 1);
 		        else -- sentencia update (al no saber que columna especifica puede querer modificar el usuario debemos comprobar posibles cambios en todas las columnas actualizables)
 		            if old."Costo servicio" is distinct from new."Costo servicio" then
                         update servicio set costo = new."Costo servicio" where id_servicio = (select id_servicio from equipo where id_cliente = new.id_persona);
