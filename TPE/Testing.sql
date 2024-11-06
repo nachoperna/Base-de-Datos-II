@@ -55,19 +55,34 @@
 
 -- 2.
     -- a.
-        select id_servicio, nombre, periodico, tipo_intervalo, costo from servicio;
-        -- Controlamos que servicios periodicos tenemos.
-        select id_servicio, id_cliente from equipo;
-        -- Controlamos que clientes poseen esos servicios.
-        select id_comp, id_tcomp, fecha, comentario, importe, id_cliente from comprobante;
-        -- Comprobamos que no se encuentran facturas generadas periodicamente, las cuales todas tienen el comentario "Factura generada periodicamente".
+        -- Listamos todos los clientes que tienen servicios activos y la cantidad de esos servicios que poseen.
+        select e.id_cliente, e.id_servicio, count(*)
+            from equipo e
+            join servicio s on e.id_servicio = s.id_servicio
+            where s.activo is true and s.periodico is true
+        group by e.id_cliente, e.id_servicio
+        order by count(*) desc;
+            -- Tomamos de ejemplo el cliente con id 34 y tiene 2 servicios con id 32.
         call generarFacturas();
-        -- Se deben generar la factura para los clientes anteriores.
-        select id_comp, id_tcomp, fecha, comentario, importe, id_cliente from comprobante;
-        -- Comprobamos que se encuentren cargados los comprobantes de los clientes anteriores con el monto correspondiente por sus servicios periodicos.
+            -- Generamos las facturas correspondientes a cada cliente.
+        -- Mostramos la cantidad de clientes distintos que tenemos que esten activos, con servicios activos y periodicos.
+        select distinct p.id_persona as cliente from persona p
+                                    join equipo e on e.id_cliente = p.id_persona
+                                    join servicio s on e.id_servicio = s.id_servicio
+                                    where p.activo is true and s.activo is true and s.periodico is true;
+            -- Tenemos 53 clientes distintos a los que se le deben generar 53 comprobantes.
+        select count(*) from comprobante;
+            -- Si funciona: debemos tener 53 comprobantes generados.
+        select id_comp, id_tcomp, id_cliente, importe from comprobante where id_cliente = 34;
+            -- El cliente 34 tiene el idcomp 16 y un importe de 420.09
+        select id_comp, id_tcomp, id_servicio, cantidad, importe from lineacomprobante where id_comp = 16;
+            -- Si funciona: deberia aparecer en el listado solo un registro con id_servicio=32 y cantidad=2
+
+        -- Ahora dejamos la base en el estado anterior al testing.
         delete from lineacomprobante;
-        delete from comprobante where comentario ilike 'factura generada periodicamente';
-        -- Borramos los datos recien ingresados para dejar la base en el estado anterior al testing.
+        delete from comprobante;
+        alter sequence idcomp restart;
+        alter sequence nrolinea restart;
 
     -- b.
         select id_personal, id_turno, desde, hasta from turno;
