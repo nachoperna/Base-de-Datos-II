@@ -56,26 +56,18 @@
         for each row execute function fn_actLineaComprobante();
 
     create or replace function fn_actLineaComprobante()
-        returns trigger as $$
-            begin
-                if (exists(select 1 from comprobante where id_comp = new.id_comp and id_tcomp = new.id_tcomp) -- se controla que exista el comprobante donde se quiere insertar o actualizar la linea.
-                    and exists(select 1 from servicio where id_servicio = new.id_servicio)) then -- se controla que exista el servicio por el que se quiere insertar o actualizar la linea.
-                    if (tg_op = 'INSERT') then
-                        update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- si se inserta una linea, entonces se actualiza el valor de importe correspondiente del comprobante sumandole el importe total de esa linea (importe*cantidad)
-                    else -- UPDATE
-                        if (exists(select 1 from lineacomprobante where nro_linea = new.nro_linea and id_comp = new.id_comp and id_tcomp = new.id_tcomp and id_servicio = new.id_servicio)) then -- si se quiere actualizar una linea, se controla que esta misma exista en el sistema.
-                            update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- le resta el monto de linea anterior
-                            update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- le suma el nuevo monto de linea
-                        else
-                            raise exception 'No existe una linea con esos id';
-                        end if;
-                    end if;
-                else
-                    raise exception 'No existe un comprobante o servicio con esos id';
-                end if;
-                return new; -- retorna new al ser un trigger before.
-            end;
-            $$ language 'plpgsql';
+    returns trigger as $$
+        begin
+            if (tg_op = 'INSERT') then
+                update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- si se inserta una linea, entonces se actualiza el valor de importe correspondiente del comprobante sumandole el importe total de esa linea (importe*cantidad)
+            else -- UPDATE
+                update comprobante set importe = importe - (old.importe * old.cantidad) where id_comp = old.id_comp and id_tcomp = old.id_tcomp; -- le resta el monto de linea anterior
+                update comprobante set importe = importe + (new.importe * new.cantidad) where id_comp = new.id_comp and id_tcomp = new.id_tcomp; -- le suma el nuevo monto de linea
+            end if;
+            return new; -- retorna new al ser un trigger before.
+        end;
+        $$ language 'plpgsql';
+
     
     -- FUNCIONA.
     
