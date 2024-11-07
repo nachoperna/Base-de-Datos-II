@@ -32,14 +32,14 @@ language 'plpgsql' as $$
                     0, -- importe 0, se actualizara automaticamente luego al insertar sus lineas gracias a las funciones implementadas en la consigna 1b
                     clientes.cliente,
                     1 -- lugar = 1 por default.
-                from (select distinct p.id_persona as cliente from persona p -- para obtener el id_cliente al que se esta generando el comprobante lo obtenemos de la siguiente consulta donde obtenemos todos los clientes DISTINTOS que esten activos, tengan un servicio activo y se periodico.
+                from (select distinct p.id_persona as cliente from persona p -- para obtener el id_cliente al que se esta generando el comprobante lo obtenemos de la siguiente consulta donde obtenemos todos los clientes DISTINTOS que esten activos, tengan un servicio activo y sea periodico.
                             join equipo e on e.id_cliente = p.id_persona
                             join servicio s on e.id_servicio = s.id_servicio
                             where p.activo is true and s.activo is true and s.periodico is true) as clientes -- tagueamos la consulta
                 returning id_comp, id_cliente) -- retornamos el id del comprobante y el id del cliente para poder usarlo en la insercion de las lineas de comprobantes asociadas a ese comprobante.
 
             insert into lineacomprobante (nro_linea, id_comp, id_tcomp, descripcion, cantidad, importe, id_servicio) 
-            SELECT
+            select
                 nextval('nrolinea'), -- proximo valor de secuencia
                 id_comp, -- idcomp correspondiente al comprobante recien insertado
                 1, -- id_tcomp asociado a los comprobantes de tipo "Factura"
@@ -51,7 +51,7 @@ language 'plpgsql' as $$
             join (select s.costo as importe, e.id_cliente as idcliente, s.id_servicio, count(*) as cant 
                   from equipo e
                   join servicio s on e.id_servicio = s.id_servicio
-                  group by e.id_cliente, s.id_servicio) as consulta -- como no podemos obtener el importe del servicio, su id y la cantidad correspondiente de la consulta anterior que usamos para insertar en Comprobante (al necesitar filtrar SOLO por clientes distintos), tenemos que generar otra consulta donde obtenemos el importe del servicio, su cantidad 
+                  group by e.id_cliente, s.id_servicio) as consulta -- como no podemos obtener el importe del servicio, su id y la cantidad correspondiente de la consulta anterior que usamos para insertar en Comprobante (al necesitar filtrar SOLO por clientes distintos), tenemos que generar otra consulta donde obtenemos el importe del servicio, su cantidad y su id.
                 on nuevo_comprobante.id_cliente = consulta.idcliente; -- aca comprobamos que solo obtengamos el importe de los servicios y su cantidad correspondiente del cliente al que acabamos de generar su comprobante.
                 -- en esta consulta obtenemos las cantidades correspondientes al agrupar todos los servicios del cliente correspondiente en la tabla EQUIPO y calcularles su cantidad. Ejemplo: si el cliente 1 tiene 2 servicios con la misma ID en la tabla Equipo, entonces en lineacomprobante se inserta una vez ese servicio con cantidad = 2
     end;
