@@ -87,3 +87,5 @@ los tiempos promedio y máximo del conjunto de turnos atendidos en el periodo.*/
       end;
       $$ language 'plpgsql';
       
+    select * from generarinformepersonal(to_timestamp('01-01-2000', 'DD-MM-YYYY H24:MI:SS'), now());
+    -- Ejemplo de llamado.
