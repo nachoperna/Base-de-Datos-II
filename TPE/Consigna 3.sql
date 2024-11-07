@@ -98,16 +98,14 @@ cada uno posee y su costo. */
         for each row execute function fn_del_vista2();
 
         create or replace function fn_del_vista2()
-        returns trigger as $$
-            begin
-                if (exists(select 1 from vista2 where id_persona = old.id_persona and id_servicio = old.id_servicio)) then
-                    delete from vista2 where id_persona = old.id_persona and id_servicio = old.id_servicio;
-                else
-                    raise exception 'No se encuentran los id a borrar en Vista2';
-                end if;
-                return old;
-            end;
-            $$ language 'plpgsql';
+		returns trigger as $$
+		    begin
+		        delete from equipo where id_cliente = old.id_persona and id_servicio = old.id_servicio; -- se elimina la tupla de la tabla EQUIPO que es la que referencia para que puedan borrarse las demas tuplas de las otra tablas.
+		        delete from persona where id_persona = old.id_persona; -- eliminacion de persona.
+		        delete from servicio where id_servicio = old.id_servicio; -- eliminacion de servicio.
+		        return old;
+		    end;
+		    $$ language 'plpgsql';
 
 /*
     c. Vista3, que contenga, por cada uno de los servicios periódicos registrados en el sistema, los
@@ -134,25 +132,33 @@ cada uno posee y su costo. */
 	    for each row execute function fn_act_vista3();
 
 	create or replace function fn_act_vista3()
+		returns trigger as $$
+		    begin
+		        if (tg_op = 'INSERT') then
+		            insert into servicio values (new.id_servicio, new.nombre, true, new.costo, new.intervalo, new.tipo_intervalo, new.activo, new.id_cat);
+		        else
+		            if (old.nombre is distinct from new.nombre) then
+		                update servicio set nombre = new.nombre where id_servicio = new.id_servicio;
+		            end if;
+		            if (old.costo is distinct from new.costo) then
+	                    update servicio set costo = new.costo where id_servicio = new.id_servicio;
+		            end if;
+		            if (old.activo is distinct from new.activo) then
+		                update servicio set activo = new.activo where id_servicio = new.id_servicio;
+		            end if;
+		        end if;
+		        return new;
+		    end;
+		    $$ language 'plpgsql';
+
+	create or replace trigger tr_del_vista3
+		instead of delete on vista3
+		for each row execute function fn_del_vista3();
+
+	create or replace function fn_del_vista3()
 	returns trigger as $$
 	    begin
-	        if (tg_op = 'INSERT') then
-	            insert into servicio values (new.id_servicio, new.nombre, true, new.costo, new.intervalo, new.tipo_intervalo, new.activo, new.id_cat);
-	        else
-	            if (exists(select 1 from servicio where id_servicio = new.id_servicio and periodico is true)) then
-	                if (old.nombre is distinct from new.nombre) then
-	                    update servicio set nombre = new.nombre where id_servicio = new.id_servicio;
-	                end if;
-	                if (old.costo is distinct from new.costo) then
-	                    update servicio set costo = new.costo where id_servicio = new.id_servicio;
-	                end if;
-	                if (old.activo is distinct from new.activo) then
-	                    update servicio set activo = new.activo where id_servicio = new.id_servicio;
-	                end if;
-	            else
-	                raise exception 'No existe el servicio a actualizar';
-	            end if;
-	        end if;
-	        return new;
+	        delete from servicio where id_servicio = old.id_servicio;
+	        return old;
 	    end;
 	    $$ language 'plpgsql';
