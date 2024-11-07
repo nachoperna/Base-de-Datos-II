@@ -74,7 +74,7 @@
         select count(*) from comprobante;
             -- Si funciona: debemos tener 53 comprobantes generados.
         select id_comp, id_tcomp, id_cliente, importe from comprobante where id_cliente = 34;
-            -- El cliente 34 tiene el idcomp 16 y un importe de 420.09
+            -- El cliente 34 tiene el idcomp 16 y un importe de 244.99
         select id_comp, id_tcomp, id_servicio, cantidad, importe from lineacomprobante where id_comp = 16;
             -- Si funciona: deberia aparecer en el listado solo un registro con id_servicio=32 y cantidad=2
 
@@ -89,7 +89,7 @@
         -- El personal 1 atendio en 2 turnos (id_turno 1 y 3) y el personal 2 en un solo turno (id_turno 2). Ambos con duracion del turno de 8 horas.
         select * from comprobante;
         -- A fines practicos se insertaron unos comprobantes de prueba.
-        select * from generarInformePersonal(to_timestamp('2024-10-09 00:00:00', 'yyyy-mm-dd HH24:MI:SS'), now());
+        select * from generarinformepersonal(to_timestamp('01-01-2000', 'DD-MM-YYYY H24:MI:SS'), now());
         -- Llamamos a la funcion con la primera fecha siendo la misma de la carga de los turnos y la segunda fecha el dia de hoy.
         -- Si funciona: nos devuelve una tabla virtual con los datos requeridos, donde el tiempo promedio y maximo son de 8 horas porque todos los turnos fueron seteados en 8 horas de duracion.
 
