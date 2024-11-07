@@ -22,7 +22,7 @@
             group by c.id_comp, c.id_tcomp, c.importe having c.importe != sum(l.importe * l.cantidad)
         )
     );
-    -- El recurso declarativo mas restrictivo en SQL estándar en este caso es un Assertion con control de tablas.
+    -- El recurso declarativo mas restrictivo en SQL estándar en este caso es un Assertion porque se requiere un control general al tener que involucrar 2 o mas tablas.
     -- Se requiere controlar que ante una insercion en la linea de un comprobante, o actualizacion de su importe o cantidad, la suma total del importe de todas las lineas que contiene ese comprobante sea igual al importe del comprobante correspondiente.
 
     -- Implementacion en PostgreSQL:    
@@ -92,6 +92,7 @@
     check (not exists(select 1 from equipo e1
                              join equipo e2 on e1.ip = e2.ip
                              where e1.id_cliente is not null and e1.id_cliente != e2.id_cliente));
+        -- El recurso declarativo mas restrictivo en SQL estandar en este caso es un check de tabla al involucrar restricciones sobre las tuplas de una misma tabla.
         -- Se requiere controlar que no exista en la tabla equipo 2 o mas tuplas con un id_cliente distinto y misma IP.
 
     -- Implementacion en PostgreSQL:
